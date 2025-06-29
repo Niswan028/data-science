@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Semiconductor Value Chain Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d4ff, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4ff, #ff6b6b, #4ecdc4);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+
+        .value-chain-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .chain-stage {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upstream { border-left-color: #ff6b6b; }
+        .midstream { border-left-color: #4ecdc4; }
+        .downstream { border-left-color: #00d4ff; }
+
+        .chain-stage:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .stage-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .stage-details {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .risk-indicator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .risk-level {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .risk-high { background: #ff4757; }
+        .risk-medium { background: #ffa502; }
+        .risk-low { background: #2ed573; }
+
+        .country-flag {
+            width: 24px;
+            height: 16px;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .data-source {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .interactive-map {
+            width: 100%;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .animate-in {
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>Global Semiconductor Value Chain Analysis</h1>
+            <p class="subtitle">Geopolitical Dependencies & Strategic Vulnerabilities Dashboard</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <!-- Value Chain Overview -->
+            <div class="card full-width animate-in">
+                <h2 class="card-title">🔗 Semiconductor Value Chain Flow</h2>
+                <div class="value-chain-flow">
+                    <div class="chain-stage upstream">
+                        <div class="stage-title">🔴 Upstream (High Risk)</div>
+                        <div class="stage-details">
+                            <strong>Design & IP:</strong> US dominance (Synopsys, Cadence, Mentor Graphics)<br>
+                            <strong>Raw Materials:</strong> China rare earths (60%), Taiwan silicon wafers (63%)<br>
+                            <strong>Equipment:</strong> ASML lithography monopoly (Netherlands), Applied Materials (US)
+                        </div>
+                    </div>
+                    <div class="chain-stage midstream">
+                        <div class="stage-title">🟡 Midstream (Critical Chokepoint)</div>
+                        <div class="stage-details">
+                            <strong>Fabrication:</strong> Taiwan (92% advanced chips), Korea (19% memory)<br>
+                            <strong>Foundries:</strong> TSMC (54% market share), Samsung (17%)<br>
+                            <strong>Memory:</strong> Samsung, SK Hynix, Micron oligopoly
+                        </div>
+                    </div>
+                    <div class="chain-stage downstream">
+                        <div class="stage-title">🔵 Downstream (India's Opportunity)</div>
+                        <div class="stage-details">
+                            <strong>Assembly & Test:</strong> China (38%), Malaysia (13%), Philippines (7%)<br>
+                            <strong>Packaging:</strong> ASE Group (Taiwan), Amkor (Korea/Philippines)<br>
+                            <strong>India Position:</strong> Growing ATMP capabilities, government incentives
+                        </div>
+                    </div>
+                </div>
+                <div class="data-source">
+                    Data Sources: SEMI Industry Association, WTO Trade Statistics, UN Comtrade
+                </div>
+            </div>
+
+            <!-- Global Market Share -->
+            <div class="card animate-in">
+                <h2 class="card-title">📊 Global Semiconductor Market Share</h2>
+                <div class="chart-container">
+                    <canvas id="marketShareChart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">$574B</div>
+                        <div class="metric-label">Global Market 2023</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">12.1%</div>
+                        <div class="metric-label">YoY Growth</div>
+                    </div>
+                </div>
+                <div class="data-source">
+                    Source: SEMI, Bloomberg Terminal, IMF Industrial Competitiveness Index
+                </div>
+            </div>
+
+            <!-- Geopolitical Risk Assessment -->
+            <div class="card animate-in">
+                <h2 class="card-title">⚠️ Geopolitical Risk Matrix</h2>
+                <div class="risk-indicator">
+                    <span>🇹🇼 Taiwan Dependency</span>
+                    <span class="risk-level risk-high">CRITICAL</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇨🇳 China Raw Materials</span>
+                    <span class="risk-level risk-high">HIGH</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇳🇱 ASML Lithography</span>
+                    <span class="risk-level risk-high">HIGH</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇺🇸 Export Controls</span>
+                    <span class="risk-level risk-medium">MEDIUM</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇮🇳 India Diversification</span>
+                    <span class="risk-level risk-low">OPPORTUNITY</span>
+                </div>
+                <div class="data-source">
+                    Source: BIS Export Control Bulletins, OECD Geo-Security Reports, GSA Analysis
+                </div>
+            </div>
+
+            <!-- India's Strategic Position -->
+            <div class="card animate-in">
+                <h2 class="card-title">🇮🇳 India's Semiconductor Strategy</h2>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">$10B</div>
+                        <div class="metric-label">ISM Incentive Fund</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">3</div>
+                        <div class="metric-label">Approved Fabs</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">28nm</div>
+                        <div class="metric-label">Target Node</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">2026</div>
+                        <div class="metric-label">Production Start</div>
+                    </div>
+                </div>
+                <h3 style="margin: 20px 0 10px 0; color: #4ecdc4;">Key Advantages:</h3>
+                <ul style="margin-left: 20px; line-height: 1.6;">
+                    <li>Large domestic market ($63B by 2026)</li>
+                    <li>Cost-competitive manufacturing</li>
+                    <li>Growing design talent pool</li>
+                    <li>Government policy support</li>
+                    <li>Strategic geographic location</li>
+                </ul>
+                <div class="data-source">
+                    Source: India Semiconductor Mission, MeitY Policy Documents
+                </div>
+            </div>
+
+            <!-- Advanced Visual Analytics: Trade Flow Network -->
+            <div class="card full-width animate-in">
+                <h2 class="card-title">🌐 Global Semiconductor Trade Network (Bilateral Flows)</h2>
+                <div class="interactive-map" id="tradeNetwork">
+                    <svg width="100%" height="400" id="networkSvg"></svg>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b6b;"></div>
+                        <span>High Risk Dependencies</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ecdc4;"></div>
+                        <span>Strategic Partnerships</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #00d4ff;"></div>
+                        <span>India's Opportunities</span>
+                    </div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">$463B</div>
+                        <div class="metric-label">Total Trade 2023</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">67%</div>
+                        <div class="metric-label">Asia Concentration</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">$2.8B</div>
+                        <div class="metric-label">India Imports</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">1.2%</div>
+                        <div class="metric-label">India Share</div>
+                    </div>
+                </div>
+                <div class="data-source">
+                    Source: UN Comtrade Bilateral Database, WTO Trade by HS Codes (8541-8542), SEMI Equipment Export Data
+                </div>
+            </div>
+
+            <!-- Critical HS Code Analysis -->
+            <div class="card animate-in">
+                <h2 class="card-title">📊 HS Code Trade Analysis</h2>
+                <div class="chart-container">
+                    <canvas id="hsCodeChart"></canvas>
+                </div>
+                <h3 style="margin: 15px 0 10px 0; color: #ff6b6b;">Critical Dependencies by HS Code:</h3>
+                <div class="risk-indicator">
+                    <span><strong>HS 8542:</strong> Integrated Circuits</span>
+                    <span style="color: #00d4ff;">$298B (65% of total)</span>
+                </div>
+                <div class="risk-indicator">
+                    <span><strong>HS 8541:</strong> Diodes & Transistors</span>
+                    <span style="color: #4ecdc4;">$89B (19% of total)</span>
+                </div>
+                <div class="risk-indicator">
+                    <span><strong>HS 8486:</strong> Manufacturing Equipment</span>
+                    <span style="color: #ffe66d;">$76B (16% of total)</span>
+                </div>
+                <div class="data-source">
+                    Source: WTO Trade Statistics, UN Comtrade HS Code Analysis
+                </div>
+            </div>
+
+            <!-- Policy Impact Matrix -->
+            <div class="card animate-in">
+                <h2 class="card-title">🏛️ Policy Impact Assessment</h2>
+                <h3 style="margin: 15px 0 10px 0; color: #ff6b6b;">China MIC2025 Impact:</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">70%</div>
+                        <div class="metric-label">Self-Sufficiency Target</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">$143B</div>
+                        <div class="metric-label">Investment Pledged</div>
+                    </div>
+                </div>
+                <h3 style="margin: 15px 0 10px 0; color: #4ecdc4;">US Export Controls:</h3>
+                <div class="risk-indicator">
+                    <span>Advanced Computing Chips</span>
+                    <span class="risk-level risk-high">RESTRICTED</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>EUV Lithography Equipment</span>
+                    <span class="risk-level risk-high">BANNED</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>Chip Manufacturing Equipment</span>
+                    <span class="risk-level risk-medium">LIMITED</span>
+                </div>
+                <h3 style="margin: 15px 0 10px 0; color: #00d4ff;">India ISM Benefits:</h3>
+                <ul style="margin-left: 20px; line-height: 1.6; font-size: 0.9rem;">
+                    <li>50% capital expenditure support for fabs</li>
+                    <li>30% support for compound semiconductors</li>
+                    <li>PLI scheme for electronics manufacturing</li>
+                    <li>Talent development programs</li>
+                </ul>
+                <div class="data-source">
+                    Source: BIS Export Control Bulletins, OECD Geo-Security Reports, MeitY Policy Documents
+                </div>
+            </div>
+
+            <!-- Market Capitalization & Stock Trends -->
+            <div class="card animate-in">
+                <h2 class="card-title">💹 Key Player Market Analysis</h2>
+                <div class="chart-container">
+                    <canvas id="marketCapChart"></canvas>
+                </div>
+                <h3 style="margin: 15px 0 10px 0; color: #4ecdc4;">Market Cap & Performance:</h3>
+                <div class="risk-indicator">
+                    <span>🇹🇼 TSMC</span>
+                    <span style="color: #00d4ff;">$448B (+12% YoY)</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇺🇸 NVIDIA</span>
+                    <span style="color: #4ecdc4;">$1.8T (+239% YoY)</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇰🇷 Samsung</span>
+                    <span style="color: #ffe66d;">$287B (-8% YoY)</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>🇨🇳 SMIC</span>
+                    <span style="color: #ff6b6b;">$28B (-15% YoY)</span>
+                </div>
+                <div class="data-source">
+                    Source: Bloomberg Terminal Data, Yahoo Finance, Market Intelligence
+                </div>
+            </div>
+
+            <!-- Fab Location & Capacity Analysis -->
+            <div class="card full-width animate-in">
+                <h2 class="card-title">🏭 Global Fab Distribution & Expansion Plans</h2>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">735</div>
+                        <div class="metric-label">Active Fabs Globally</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">142</div>
+                        <div class="metric-label">Under Construction</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">$500B</div>
+                        <div class="metric-label">Expansion Investment</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">2026</div>
+                        <div class="metric-label">Peak Capacity Year</div>
+                    </div>
+                </div>
+                <h3 style="margin: 20px 0 10px 0; color: #ff6b6b;">Regional Fab Distribution:</h3>
+                <div class="chart-container">
+                    <canvas id="fabDistributionChart"></canvas>
+                </div>
+                <h3 style="margin: 20px 0 10px 0; color: #4ecdc4;">India's Fab Pipeline:</h3>
+                <div class="risk-indicator">
+                    <span>Micron ATMP Facility (Gujarat)</span>
+                    <span style="color: #00d4ff;">$2.75B Investment</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>Tata Electronics-PSMC (Karnataka)</span>
+                    <span style="color: #4ecdc4;">$3B Fab Project</span>
+                </div>
+                <div class="risk-indicator">
+                    <span>CG Power Renesas (Gujarat)</span>
+                    <span style="color: #ffe66d;">$48M ATMP Facility</span>
+                </div>
+                <div class="data-source">
+                    Source: SEMI Fab Database, Global Semiconductor Alliance, India Semiconductor Mission
+                </div>
+            </div>
+
+            <!-- Business Intelligence Summary -->
+            <div class="card full-width animate-in">
+                <h2 class="card-title">🎯 Strategic Recommendations for India</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div>
+                        <h3 style="color: #ff6b6b; margin-bottom: 10px;">Immediate Actions (0-2 years)</h3>
+                        <ul style="margin-left: 20px; line-height: 1.6; font-size: 0.9rem;">
+                            <li>Scale ATMP operations to capture 5% global market</li>
+                            <li>Partner with displaced Chinese suppliers</li>
+                            <li>Develop compound semiconductor capabilities</li>
+                            <li>Establish design centers in Bangalore/Hyderabad</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: #4ecdc4; margin-bottom: 10px;">Medium-term Strategy (2-5 years)</h3>
+                        <ul style="margin-left: 20px; line-height: 1.6; font-size: 0.9rem;">
+                            <li>Achieve 28nm fab production capability</li>
+                            <li>Build indigenous equipment manufacturing</li>
+                            <li>Develop specialized materials supply chain</li>
+                            <li>Create India-Japan-Korea partnership axis</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: #00d4ff; margin-bottom: 10px;">Long-term Vision (5+ years)</h3>
+                        <ul style="margin-left: 20px; line-height: 1.6; font-size: 0.9rem;">
+                            <li>Establish India as alternative to China+1 strategy</li>
+                            <li>Develop 14nm+ advanced node capabilities</li>
+                            <li>Create regional semiconductor hub for ASEAN</li>
+                            <li>Achieve 10% global market share in select segments</li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 20px; background: rgba(0, 212, 255, 0.1); border-radius: 10px; border-left: 4px solid #00d4ff;">
+                    <h3 style="margin-bottom: 10px;">Critical Success Factors:</h3>
+                    <p style="line-height: 1.6;">India's success depends on leveraging geopolitical tensions as opportunity windows, maintaining policy consistency across election cycles, building talent pipeline through educational partnerships, and creating integrated ecosystem rather than isolated initiatives.</p>
+                </div>
+                <div class="data-source">
+                    Analysis based on: WTO Trade Data, SEMI Reports, Bloomberg Terminal, Policy Document Analysis, GSA Strategic Assessments
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            animateCards();
+        });
+
+        function animateCards() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(30px)';
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.6s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 100);
+                }, index * 150);
+            });
+        }
+
+        function initializeCharts() {
+            // Market Share Chart
+            const marketCtx = document.getElementById('marketShareChart').getContext('2d');
+            new Chart(marketCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Taiwan', 'South Korea', 'China', 'USA', 'Japan', 'Others'],
+                    datasets: [{
+                        data: [21, 19, 17, 12, 8, 23],
+                        backgroundColor: [
+                            '#ff6b6b',
+                            '#4ecdc4',
+                            '#ffe66d',
+                            '#00d4ff',
+                            '#a8e6cf',
+                            '#ffd93d'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            // HS Code Analysis Chart
+            const hsCodeCtx = document.getElementById('hsCodeChart').getContext('2d');
+            new Chart(hsCodeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['HS 8542\n(ICs)', 'HS 8541\n(Diodes)', 'HS 8486\n(Equipment)', 'HS 2804\n(Silicon)'],
+                    datasets: [{
+                        label: 'Trade Value ($B)',
+                        data: [298, 89, 76, 12],
+                        backgroundColor: ['#00d4ff', '#4ecdc4', '#ffe66d', '#ff6b6b'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#ffffff' } },
+                        y: { ticks: { color: '#ffffff' } }
+                    }
+                }
+            });
+
+            // Market Cap Chart
+            const marketCapCtx = document.getElementById('marketCapChart').getContext('2d');
+            new Chart(marketCapCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['NVIDIA', 'TSMC', 'Samsung', 'ASML', 'SMIC'],
+                    datasets: [{
+                        label: 'Market Cap ($B)',
+                        data: [1800, 448, 287, 245, 28],
+                        backgroundColor: ['#00d4ff', '#ff6b6b', '#4ecdc4', '#ffe66d', '#ffd93d'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#ffffff' } },
+                        y: { ticks: { color: '#ffffff' } }
+                    }
+                }
+            });
+
+            // Fab Distribution Chart
+            const fabDistCtx = document.getElementById('fabDistributionChart').getContext('2d');
+            new Chart(fabDistCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['East Asia', 'North America', 'Europe', 'Rest of World'],
+                    datasets: [{
+                        data: [67, 18, 12, 3],
+                        backgroundColor: ['#ff6b6b', '#00d4ff', '#4ecdc4', '#ffe66d'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#ffffff' }
+                        }
+                    }
+                }
+            });
+
+            // Initialize Trade Network Visualization
+            initializeTradeNetwork();
+        }
+
+        function initializeTradeNetwork() {
+            const svg = d3.select("#networkSvg");
+            const width = svg.node().getBoundingClientRect().width;
+            const height = 400;
+
+            // Sample data for major semiconductor trade relationships
+            const nodes = [
+                {id: "Taiwan", group: 1, size: 50, x: width*0.7, y: height*0.3},
+                {id: "China", group: 2, size: 45, x: width*0.6, y: height*0.6},
+                {id: "USA", group: 3, size: 40, x: width*0.2, y: height*0.4},
+                {id: "S.Korea", group: 1, size: 35, x: width*0.8, y: height*0.5},
+                {id: "Japan", group: 1, size: 30, x: width*0.75, y: height*0.7},
+                {id: "India", group: 4, size: 15, x: width*0.4, y: height*0.8},
+                {id: "Netherlands", group: 3, size: 25, x: width*0.3, y: height*0.2},
+                {id: "Singapore", group: 1, size: 20, x: width*0.5, y: height*0.5}
+            ];
+
+            const links = [
+                {source: "Taiwan", target: "China", value: 80, risk: "high"},
+                {source: "Taiwan", target: "USA", value: 60, risk: "medium"},
+                {source: "China", target: "USA", value: 45, risk: "high"},
+                {source: "S.Korea", target: "China", value: 50, risk: "medium"},
+                {source: "Netherlands", target: "Taiwan", value: 70, risk: "high"},
+                {source: "Japan", target: "China", value: 40, risk: "medium"},
+                {source: "India", target: "China", value: 25, risk: "opportunity"},
+                {source: "Singapore", target: "India", value: 15, risk: "opportunity"}
+            ];
+
+            // Color scale
+            const color = d3.scaleOrdinal()
+                .domain([1, 2, 3, 4])
+                .range(["#ff6b6b", "#ffe66d", "#00d4ff", "#4ecdc4"]);
+
+            const linkColor = d3.scaleOrdinal()
+                .domain(["high", "medium", "opportunity"])
+                .range(["#ff4757", "#ffa502", "#2ed573"]);
+
+            // Draw links
+            svg.selectAll(".link")
+                .data(links)
+                .enter().append("line")
+                .attr("class", "link")
+                .attr("stroke", d => linkColor(d.risk))
+                .attr("stroke-width", d => Math.sqrt(d.value) / 2)
+                .attr("stroke-opacity", 0.6);
+
+            // Draw nodes
+            const node = svg.selectAll(".node")
+                .data(nodes)
+                .enter().append("g")
+                .attr("class", "node");
+
+            node.append("circle")
+                .attr("r", d => d.size / 2.5)
+                .attr("fill", d => color(d.group))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            node.append("text")
+                .text(d => d.id)
+                .attr("text-anchor", "middle")
+                .attr("dy", d => d.size / 2.5 + 15)
+                .attr("fill", "#ffffff")
+                .attr("font-size", "12px")
+                .attr("font-weight", "bold");
+
+            // Position elements
+            svg.selectAll(".link")
+                .attr("x1", d => nodes.find(n => n.id === d.source).x)
+                .attr("y1", d => nodes.find(n => n.id === d.source).y)
+                .attr("x2", d => nodes.find(n => n.id === d.target).x)
+                .attr("y2", d => nodes.find(n => n.id === d.target).y);
+
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+
+            // Add hover effects
+            node.on("mouseover", function(event, d) {
+                d3.select(this).select("circle").attr("stroke-width", 4);
+                // Show connected links
+                svg.selectAll(".link")
+                    .attr("stroke-opacity", l => 
+                        l.source === d.id || l.target === d.id ? 1 : 0.1);
+            })
+            .on("mouseout", function(event, d) {
+                d3.select(this).select("circle").attr("stroke-width", 2);
+                svg.selectAll(".link").attr("stroke-opacity", 0.6);
+            });
+        }
+
+        // Interactive elements
+        document.querySelectorAll('.chain-stage').forEach(stage => {
+            stage.addEventListener('click', function() {
+                const title = this.querySelector('.stage-title').textContent;
+                alert(`${title}\n\nClick to explore detailed breakdown of this value chain segment.`);
+            });
+        });
+
+        document.querySelectorAll('.risk-indicator').forEach(indicator => {
+            indicator.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.02)';
+                this.style.boxShadow = '0 5px 15px rgba(0, 212, 255, 0.2)';
+            });
+            
+            indicator.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
